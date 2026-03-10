@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Galaga Remaster</title>
 
 <style>
@@ -10,36 +9,36 @@
 body{
 margin:0;
 background:black;
-color:white;
-font-family:Arial;
-text-align:center;
 overflow:hidden;
+font-family:Arial;
+color:white;
 }
 
 canvas{
-background:black;
 display:block;
-margin:auto;
 }
 
 #menu{
 position:absolute;
-top:40%;
 width:100%;
+height:100%;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+background:black;
 }
 
-#menu button{
-font-size:25px;
-padding:15px 40px;
+#start{
+font-size:40px;
+border:2px solid white;
+padding:10px 40px;
 }
 
 #hud{
 position:absolute;
 top:10px;
-width:100%;
-display:flex;
-justify-content:space-between;
-padding:0 20px;
+left:10px;
 font-size:18px;
 }
 
@@ -58,31 +57,76 @@ height:70px;
 font-size:30px;
 background:#222;
 color:white;
-border-radius:10px;
 border:none;
+border-radius:10px;
+}
+
+#final{
+display:none;
+position:absolute;
+top:20%;
+width:100%;
+text-align:center;
 }
 
 </style>
+
 </head>
 
 <body>
 
 <div id="menu">
+
 <h1>GALAGA REMASTER</h1>
-<button id="startBtn">START</button>
+
+<div id="start">START</div>
+
+<p>Presiona 🔥 para comenzar</p>
+
 </div>
 
 <div id="hud">
-<div id="score">SCORE 0</div>
-<div id="level">LEVEL 1</div>
+
+<span id="score">SCORE 0</span>
+|
+<span id="level">LEVEL 1</span>
+|
+<span id="lives">❤️ 3</span>
+
 </div>
 
-<canvas id="game" width="400" height="600"></canvas>
+<canvas id="game"></canvas>
 
 <div id="controls">
+
 <button class="ctrl" id="left">◀</button>
 <button class="ctrl" id="shoot">🔥</button>
 <button class="ctrl" id="right">▶</button>
+
+</div>
+
+<div id="final">
+
+<h2>ANALI</h2>
+
+<p>
+
+Anali, mediante esta forma creativa quiero expresar todo lo que siento por ti.
+
+No tuve el valor de decírtelo en persona, pero me encanta cómo me tratas, tu personalidad y que siempre sabes defenderte.
+
+Tú me gustas.
+
+No sé si sientas lo mismo por mí y está bien si no es así, no hay presión.
+
+Sé que somos jóvenes y no quiero proponerte algo serio.
+
+Solo quería que supieras lo que siento.
+
+Att: Gael
+
+</p>
+
 </div>
 
 <script>
@@ -90,39 +134,87 @@ border:none;
 const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
 
-let running=false
+function resize(){
+canvas.width=window.innerWidth
+canvas.height=window.innerHeight
+}
+resize()
+window.onresize=resize
 
-let player={x:200,y:540}
+let started=false
+
+let score=0
+let level=1
+let stage=1
+let lives=3
+
+// CARGAR AUTOGUARDADO
+
+if(localStorage.getItem("galaga_level")){
+
+level=parseInt(localStorage.getItem("galaga_level"))
+score=parseInt(localStorage.getItem("galaga_score"))
+lives=parseInt(localStorage.getItem("galaga_lives"))
+
+}
+
+document.getElementById("score").innerText="SCORE "+score
+document.getElementById("level").innerText="LEVEL "+level
+document.getElementById("lives").innerText="❤️ "+lives
+
+let player={x:300,y:500}
 
 let bullets=[]
+let enemyBullets=[]
 let enemies=[]
 let stars=[]
+let explosions=[]
 
 let left=false
 let right=false
 
-let score=0
-let level=1
+// FUNCION GUARDAR
 
-for(let i=0;i<120;i++){
+function saveGame(){
+
+localStorage.setItem("galaga_level",level)
+localStorage.setItem("galaga_score",score)
+localStorage.setItem("galaga_lives",lives)
+
+}
+
+// estrellas
+
+for(let i=0;i<150;i++){
+
 stars.push({
-x:Math.random()*400,
-y:Math.random()*600,
-speed:Math.random()*1+0.5
+
+x:Math.random()*2000,
+y:Math.random()*2000,
+s:Math.random()*2
+
 })
+
 }
 
 function spawnEnemies(){
 
 enemies=[]
 
-for(let r=0;r<3;r++){
-for(let c=0;c<6;c++){
+let rows=2+stage
+let cols=7
+
+for(let r=0;r<rows;r++){
+for(let c=0;c<cols;c++){
 
 enemies.push({
-x:60+c*50,
-y:80+r*40,
-alive:true
+
+x:100+c*80,
+y:80+r*60,
+alive:true,
+attack:false,
+t:Math.random()*200
+
 })
 
 }
@@ -130,95 +222,50 @@ alive:true
 
 }
 
+function startGame(){
+
+document.getElementById("menu").style.display="none"
+
+spawnEnemies()
+
+started=true
+
+}
+
 function shoot(){
 
-if(!running)return
+if(!started){
+startGame()
+return
+}
 
-bullets.push({
-x:player.x,
-y:player.y
+bullets.push({x:player.x,y:player.y})
+
+}
+
+function explode(x,y){
+
+explosions.push({
+
+x:x,
+y:y,
+t:20
+
 })
 
 }
 
 function update(){
 
-if(!running)return
+if(!started)return
 
-if(left) player.x-=5
-if(right) player.x+=5
+if(left)player.x-=8
+if(right)player.x+=8
 
-player.x=Math.max(20,Math.min(380,player.x))
-
-stars.forEach(s=>{
-s.y+=s.speed
-if(s.y>600)s.y=0
-})
-
-bullets.forEach(b=>b.y-=8)
-
-bullets.forEach((b,bi)=>{
-enemies.forEach(e=>{
-
-if(e.alive &&
-Math.abs(b.x-e.x)<15 &&
-Math.abs(b.y-e.y)<15){
-
-e.alive=false
-bullets.splice(bi,1)
-
-score+=10
-document.getElementById("score").innerText="SCORE "+score
-
-}
-
-})
-})
-
-if(enemies.every(e=>!e.alive)){
-
-level++
-document.getElementById("level").innerText="LEVEL "+level
-
-spawnEnemies()
-
-}
-
-}
-
-function draw(){
-
-ctx.clearRect(0,0,400,600)
-
-ctx.fillStyle="white"
+player.x=Math.max(30,Math.min(canvas.width-30,player.x))
 
 stars.forEach(s=>{
-ctx.fillRect(s.x,s.y,2,2)
-})
 
-ctx.fillStyle="cyan"
+s.y+=s.s
 
-ctx.beginPath()
-ctx.moveTo(player.x,player.y)
-ctx.lineTo(player.x-15,player.y+20)
-ctx.lineTo(player.x+15,player.y+20)
-ctx.closePath()
-ctx.fill()
-
-ctx.fillStyle="yellow"
-
-bullets.forEach(b=>{
-ctx.fillRect(b.x-2,b.y,4,10)
-})
-
-ctx.fillStyle="red"
-
-enemies.forEach(e=>{
-if(e.alive){
-ctx.fillRect(e.x-15,e.y-10,30,20)
-}
-})
-
-}
-
-function loop(){
+if(s.y>canvas.height
