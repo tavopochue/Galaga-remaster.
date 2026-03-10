@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Galaga Remaster</title>
 
 <style>
@@ -10,7 +11,7 @@ body{
 margin:0;
 background:black;
 color:white;
-font-family:Courier New;
+font-family:monospace;
 text-align:center;
 overflow:hidden;
 }
@@ -21,37 +22,47 @@ display:block;
 margin:auto;
 }
 
-#start{
+#menu{
 position:absolute;
 top:40%;
 width:100%;
-font-size:28px;
 }
 
-#gameover{
-display:none;
+#hud{
 position:absolute;
-top:40%;
+top:10px;
 width:100%;
-font-size:28px;
+display:flex;
+justify-content:space-between;
+padding:0 20px;
+font-size:18px;
+}
+
+#controls{
+position:fixed;
+bottom:20px;
+width:100%;
+display:flex;
+justify-content:center;
+gap:25px;
+}
+
+.ctrl{
+width:90px;
+height:70px;
+font-size:30px;
+background:#222;
+color:white;
+border-radius:15px;
+border:none;
 }
 
 #final{
 display:none;
 position:absolute;
-top:20%;
+top:35%;
 width:100%;
-font-size:22px;
-}
-
-#chest{
-font-size:90px;
-animation:open 1s infinite alternate;
-}
-
-@keyframes open{
-from{transform:scale(1)}
-to{transform:scale(1.2)}
+font-size:20px;
 }
 
 </style>
@@ -59,37 +70,36 @@ to{transform:scale(1.2)}
 
 <body>
 
-<div id="start">
-GALAGA REMASTER<br><br>
-TOCA LA PANTALLA PARA EMPEZAR
+<div id="menu">
+<h1>GALAGA REMASTER</h1>
+<button onclick="startGame()">START</button>
+</div>
+
+<div id="hud">
+<div id="score">SCORE 0</div>
+<div id="level">LEVEL 1</div>
 </div>
 
 <canvas id="game" width="400" height="600"></canvas>
 
-<div id="gameover">
-GAME OVER<br>
-TOCA PARA REINTENTAR
+<div id="controls">
+<button class="ctrl" ontouchstart="left=true" ontouchend="left=false">◀</button>
+<button class="ctrl" ontouchstart="shoot()">🔥</button>
+<button class="ctrl" ontouchstart="right=true" ontouchend="right=false">▶</button>
 </div>
 
 <div id="final">
 
-<div id="chest">💎</div>
-
-<h2>RECOMPENSA PARA ANALÍ</h2>
+<h2>💎 RECOMPENSA PARA ANALÍ</h2>
 
 <p>
 
 Analí…<br><br>
 
-Si llegaste hasta aquí significa que completaste
-todo el juego.<br><br>
+Si llegaste hasta aquí significa que completaste todo el juego.<br><br>
 
-Y la verdad… este final no era solo del juego.<br><br>
-
-Mientras hacía esto pensé mucho en algo.<br>
-Me gusta hablar contigo,
-me gusta tu forma de ser
-y me gusta pasar tiempo contigo.<br><br>
+Mientras hacía este juego pensé mucho en algo.<br>
+Me gusta hablar contigo y pasar tiempo contigo.<br><br>
 
 Por eso quería decirte algo sencillo:<br><br>
 
@@ -101,35 +111,41 @@ Me gustaría seguir conociéndote más.<br><br>
 
 </div>
 
-<canvas id="game"></canvas>
-
 <script>
 
-let canvas=document.querySelector("canvas");
-let ctx=canvas.getContext("2d");
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
 
-let player={x:180,y:520,w:40,h:20};
+let player={x:200,y:520}
 
-let bullets=[];
-let enemies=[];
-let explosions=[];
-let stars=[];
+let bullets=[]
+let enemies=[]
+let stars=[]
+let explosions=[]
 
-let level=parseInt(localStorage.getItem("galaga_level"))||1;
+let left=false
+let right=false
 
-let playing=false;
-let gameOver=false;
+let score=0
+let level=parseInt(localStorage.getItem("galagaLevel"))||1
+
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)()
 
 function sound(freq){
 
-let audio=new (window.AudioContext||window.webkitAudioContext)();
-let osc=audio.createOscillator();
+let osc=audioCtx.createOscillator()
+let gain=audioCtx.createGain()
 
-osc.frequency.value=freq;
-osc.connect(audio.destination);
+osc.connect(gain)
+gain.connect(audioCtx.destination)
 
-osc.start();
-osc.stop(audio.currentTime+0.1);
+osc.frequency.value=freq
+osc.type="square"
+
+gain.gain.setValueAtTime(0.1,audioCtx.currentTime)
+
+osc.start()
+osc.stop(audioCtx.currentTime+0.1)
 
 }
 
@@ -138,220 +154,29 @@ for(let i=0;i<120;i++){
 stars.push({
 x:Math.random()*400,
 y:Math.random()*600,
-speed:1+Math.random()*2
+speed:Math.random()*1+0.5
 })
+
+}
+
+function startGame(){
+
+menu.style.display="none"
+
+spawnEnemies()
+
+loop()
 
 }
 
 function spawnEnemies(){
 
-enemies=[];
+enemies=[]
 
-let rows=3+level;
-let cols=6;
+let rows=2+Math.min(level,5)
 
 for(let r=0;r<rows;r++){
-
-for(let c=0;c<cols;c++){
+for(let c=0;c<6;c++){
 
 enemies.push({
-
-x:50+c*50,
-y:50+r*40,
-w:30,
-h:20,
-dir:1,
-speed:0.5+level*0.1
-
-})
-
-}
-
-}
-
-}
-
-spawnEnemies();
-
-document.body.addEventListener("click",()=>{
-
-if(!playing){
-
-playing=true;
-
-document.getElementById("start").style.display="none";
-
-}
-
-if(gameOver){
-
-location.reload();
-
-}
-
-bullets.push({
-x:player.x+18,
-y:player.y
-});
-
-sound(700);
-
-});
-
-document.addEventListener("mousemove",e=>{
-
-player.x=e.clientX-200;
-
-});
-
-document.addEventListener("touchmove",e=>{
-
-player.x=e.touches[0].clientX-200;
-
-});
-
-function update(){
-
-if(!playing)return;
-
-for(let s of stars){
-
-s.y+=s.speed;
-
-if(s.y>600)s.y=0;
-
-}
-
-for(let b of bullets){
-
-b.y-=8;
-
-}
-
-for(let e of enemies){
-
-e.x+=e.dir*e.speed;
-
-if(e.x<10||e.x>360)e.dir*=-1;
-
-}
-
-for(let b of bullets){
-
-for(let e of enemies){
-
-if(
-
-b.x<e.x+e.w &&
-b.x+5>e.x &&
-b.y<e.y+e.h &&
-b.y+10>e.y
-
-){
-
-sound(200);
-
-explosions.push({
-x:e.x,
-y:e.y,
-life:20
-});
-
-e.y=-100;
-
-}
-
-}
-
-}
-
-for(let ex of explosions){
-
-ex.life--;
-
-}
-
-explosions=explosions.filter(e=>e.life>0);
-
-if(enemies.every(e=>e.y<0)){
-
-level++;
-
-localStorage.setItem("galaga_level",level);
-
-spawnEnemies();
-
-}
-
-if(level>20){
-
-playing=false;
-
-document.getElementById("final").style.display="block";
-
-}
-
-}
-
-function draw(){
-
-ctx.clearRect(0,0,400,600);
-
-ctx.fillStyle="white";
-
-for(let s of stars){
-
-ctx.fillRect(s.x,s.y,2,2);
-
-}
-
-ctx.fillStyle="cyan";
-
-ctx.fillRect(player.x,player.y,player.w,player.h);
-
-ctx.fillStyle="yellow";
-
-for(let b of bullets){
-
-ctx.fillRect(b.x,b.y,4,10);
-
-}
-
-ctx.fillStyle="red";
-
-for(let e of enemies){
-
-ctx.fillRect(e.x,e.y,e.w,e.h);
-
-}
-
-ctx.fillStyle="orange";
-
-for(let ex of explosions){
-
-ctx.fillRect(ex.x,ex.y,20,20);
-
-}
-
-ctx.fillStyle="white";
-
-ctx.fillText("LEVEL "+level,10,20);
-
-}
-
-function loop(){
-
-update();
-
-draw();
-
-requestAnimationFrame(loop);
-
-}
-
-loop();
-
-</script>
-
-</body>
-</html>
+x:60+c
