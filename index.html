@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Galaga Remaster</title>
 
 <style>
@@ -28,6 +28,11 @@ top:40%;
 width:100%;
 }
 
+#menu button{
+font-size:24px;
+padding:15px 40px;
+}
+
 #hud{
 position:absolute;
 top:10px;
@@ -48,135 +53,9 @@ gap:25px;
 }
 
 .ctrl{
-width:90px;
+width:80px;
 height:70px;
 font-size:30px;
 background:#222;
 color:white;
-border-radius:15px;
-border:none;
-}
-
-#final{
-display:none;
-position:absolute;
-top:35%;
-width:100%;
-font-size:20px;
-}
-
-</style>
-</head>
-
-<body>
-
-<div id="menu">
-<h1>GALAGA REMASTER</h1>
-<button onclick="startGame()">START</button>
-</div>
-
-<div id="hud">
-<div id="score">SCORE 0</div>
-<div id="level">LEVEL 1</div>
-</div>
-
-<canvas id="game" width="400" height="600"></canvas>
-
-<div id="controls">
-<button class="ctrl" ontouchstart="left=true" ontouchend="left=false">◀</button>
-<button class="ctrl" ontouchstart="shoot()">🔥</button>
-<button class="ctrl" ontouchstart="right=true" ontouchend="right=false">▶</button>
-</div>
-
-<div id="final">
-
-<h2>💎 RECOMPENSA PARA ANALÍ</h2>
-
-<p>
-
-Analí…<br><br>
-
-Si llegaste hasta aquí significa que completaste todo el juego.<br><br>
-
-Mientras hacía este juego pensé mucho en algo.<br>
-Me gusta hablar contigo y pasar tiempo contigo.<br><br>
-
-Por eso quería decirte algo sencillo:<br><br>
-
-Me gustaría seguir conociéndote más.<br><br>
-
-<b>Att: Gael</b>
-
-</p>
-
-</div>
-
-<script>
-
-const canvas=document.getElementById("game")
-const ctx=canvas.getContext("2d")
-
-let player={x:200,y:520}
-
-let bullets=[]
-let enemies=[]
-let stars=[]
-let explosions=[]
-
-let left=false
-let right=false
-
-let score=0
-let level=parseInt(localStorage.getItem("galagaLevel"))||1
-
-const audioCtx=new (window.AudioContext||window.webkitAudioContext)()
-
-function sound(freq){
-
-let osc=audioCtx.createOscillator()
-let gain=audioCtx.createGain()
-
-osc.connect(gain)
-gain.connect(audioCtx.destination)
-
-osc.frequency.value=freq
-osc.type="square"
-
-gain.gain.setValueAtTime(0.1,audioCtx.currentTime)
-
-osc.start()
-osc.stop(audioCtx.currentTime+0.1)
-
-}
-
-for(let i=0;i<120;i++){
-
-stars.push({
-x:Math.random()*400,
-y:Math.random()*600,
-speed:Math.random()*1+0.5
-})
-
-}
-
-function startGame(){
-
-menu.style.display="none"
-
-spawnEnemies()
-
-loop()
-
-}
-
-function spawnEnemies(){
-
-enemies=[]
-
-let rows=2+Math.min(level,5)
-
-for(let r=0;r<rows;r++){
-for(let c=0;c<6;c++){
-
-enemies.push({
-x:60+c
+border-radius:10px;
