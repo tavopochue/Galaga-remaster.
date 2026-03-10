@@ -9,9 +9,9 @@
 body{
 margin:0;
 background:black;
-overflow:hidden;
-font-family:Arial;
 color:white;
+font-family:Arial;
+overflow:hidden;
 }
 
 canvas{
@@ -23,16 +23,17 @@ position:absolute;
 width:100%;
 height:100%;
 display:flex;
-flex-direction:column;
 justify-content:center;
 align-items:center;
+flex-direction:column;
 background:black;
 }
 
 #start{
-font-size:40px;
-border:2px solid white;
+font-size:35px;
 padding:10px 40px;
+border:2px solid white;
+margin-top:20px;
 }
 
 #hud{
@@ -52,25 +53,16 @@ gap:20px;
 }
 
 .ctrl{
+font-size:30px;
 width:80px;
 height:70px;
-font-size:30px;
 background:#222;
 color:white;
 border:none;
 border-radius:10px;
 }
 
-#final{
-display:none;
-position:absolute;
-top:20%;
-width:100%;
-text-align:center;
-}
-
 </style>
-
 </head>
 
 <body>
@@ -81,16 +73,13 @@ text-align:center;
 
 <div id="start">START</div>
 
-<p>Presiona 🔥 para comenzar</p>
+<p>Presiona 🔥 para empezar</p>
 
 </div>
 
 <div id="hud">
 
-<span id="score">SCORE 0</span>
-|
-<span id="level">LEVEL 1</span>
-|
+<span id="level">LEVEL 1</span> |
 <span id="lives">❤️ 3</span>
 
 </div>
@@ -102,30 +91,6 @@ text-align:center;
 <button class="ctrl" id="left">◀</button>
 <button class="ctrl" id="shoot">🔥</button>
 <button class="ctrl" id="right">▶</button>
-
-</div>
-
-<div id="final">
-
-<h2>ANALI</h2>
-
-<p>
-
-Anali, mediante esta forma creativa quiero expresar todo lo que siento por ti.
-
-No tuve el valor de decírtelo en persona, pero me encanta cómo me tratas, tu personalidad y que siempre sabes defenderte.
-
-Tú me gustas.
-
-No sé si sientas lo mismo por mí y está bien si no es así, no hay presión.
-
-Sé que somos jóvenes y no quiero proponerte algo serio.
-
-Solo quería que supieras lo que siento.
-
-Att: Gael
-
-</p>
 
 </div>
 
@@ -143,54 +108,48 @@ window.onresize=resize
 
 let started=false
 
-let score=0
 let level=1
 let stage=1
 let lives=3
 
-// CARGAR AUTOGUARDADO
+// AUTOGUARDADO
 
-if(localStorage.getItem("galaga_level")){
-
-level=parseInt(localStorage.getItem("galaga_level"))
-score=parseInt(localStorage.getItem("galaga_score"))
-lives=parseInt(localStorage.getItem("galaga_lives"))
-
+if(localStorage.getItem("level")){
+level=parseInt(localStorage.getItem("level"))
+lives=parseInt(localStorage.getItem("lives"))
 }
 
-document.getElementById("score").innerText="SCORE "+score
 document.getElementById("level").innerText="LEVEL "+level
 document.getElementById("lives").innerText="❤️ "+lives
 
-let player={x:300,y:500}
+function save(){
+
+localStorage.setItem("level",level)
+localStorage.setItem("lives",lives)
+
+}
+
+let player={
+x:canvas.width/2,
+y:canvas.height-100
+}
 
 let bullets=[]
-let enemyBullets=[]
 let enemies=[]
-let stars=[]
 let explosions=[]
+let stars=[]
 
 let left=false
 let right=false
 
-// FUNCION GUARDAR
-
-function saveGame(){
-
-localStorage.setItem("galaga_level",level)
-localStorage.setItem("galaga_score",score)
-localStorage.setItem("galaga_lives",lives)
-
-}
-
-// estrellas
+// estrellas fondo
 
 for(let i=0;i<150;i++){
 
 stars.push({
 
-x:Math.random()*2000,
-y:Math.random()*2000,
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
 s:Math.random()*2
 
 })
@@ -201,11 +160,9 @@ function spawnEnemies(){
 
 enemies=[]
 
-let rows=2+stage
-let cols=7
+for(let r=0;r<2+stage;r++){
 
-for(let r=0;r<rows;r++){
-for(let c=0;c<cols;c++){
+for(let c=0;c<6;c++){
 
 enemies.push({
 
@@ -213,11 +170,12 @@ x:100+c*80,
 y:80+r*60,
 alive:true,
 attack:false,
-t:Math.random()*200
+timer:Math.random()*200
 
 })
 
 }
+
 }
 
 }
@@ -239,7 +197,12 @@ startGame()
 return
 }
 
-bullets.push({x:player.x,y:player.y})
+bullets.push({
+
+x:player.x,
+y:player.y
+
+})
 
 }
 
@@ -249,7 +212,7 @@ explosions.push({
 
 x:x,
 y:y,
-t:20
+size:30
 
 })
 
@@ -259,13 +222,192 @@ function update(){
 
 if(!started)return
 
-if(left)player.x-=8
-if(right)player.x+=8
+if(left)player.x-=7
+if(right)player.x+=7
 
 player.x=Math.max(30,Math.min(canvas.width-30,player.x))
 
 stars.forEach(s=>{
 
 s.y+=s.s
+if(s.y>canvas.height)s.y=0
 
-if(s.y>canvas.height
+})
+
+bullets.forEach(b=>b.y-=10)
+
+enemies.forEach(e=>{
+
+if(!e.alive)return
+
+e.timer--
+
+if(e.timer<0){
+
+e.attack=true
+
+}
+
+if(e.attack){
+
+e.y+=3
+
+if(e.y>canvas.height){
+
+e.y=80
+e.attack=false
+e.timer=200
+
+}
+
+}
+
+})
+
+bullets.forEach((b,bi)=>{
+
+enemies.forEach(e=>{
+
+if(e.alive &&
+Math.abs(b.x-e.x)<20 &&
+Math.abs(b.y-e.y)<20){
+
+e.alive=false
+
+explode(e.x,e.y)
+
+bullets.splice(bi,1)
+
+}
+
+})
+
+})
+
+explosions.forEach(ex=>ex.size--)
+
+if(enemies.every(e=>!e.alive)){
+
+stage++
+
+if(stage>3){
+
+stage=1
+level++
+
+document.getElementById("level").innerText="LEVEL "+level
+
+save()
+
+}
+
+if(level>20){
+
+alert("Anali, me gustas mucho. Att: Gael")
+
+localStorage.clear()
+
+}
+
+spawnEnemies()
+
+}
+
+}
+
+function draw(){
+
+ctx.fillStyle="black"
+ctx.fillRect(0,0,canvas.width,canvas.height)
+
+ctx.fillStyle="white"
+
+stars.forEach(s=>{
+
+ctx.fillRect(s.x,s.y,2,2)
+
+})
+
+
+// NAVE
+
+ctx.fillStyle="cyan"
+
+ctx.beginPath()
+
+ctx.moveTo(player.x,player.y)
+ctx.lineTo(player.x-20,player.y+30)
+ctx.lineTo(player.x+20,player.y+30)
+
+ctx.fill()
+
+// DISPAROS
+
+ctx.fillStyle="yellow"
+
+bullets.forEach(b=>{
+
+ctx.fillRect(b.x-2,b.y,4,10)
+
+})
+
+// ENEMIGOS
+
+ctx.fillStyle="lime"
+
+enemies.forEach(e=>{
+
+if(!e.alive)return
+
+ctx.beginPath()
+
+ctx.arc(e.x,e.y,15,0,Math.PI*2)
+
+ctx.fill()
+
+})
+
+// EXPLOSIONES
+
+ctx.fillStyle="orange"
+
+explosions.forEach(ex=>{
+
+ctx.beginPath()
+ctx.arc(ex.x,ex.y,ex.size,0,Math.PI*2)
+ctx.fill()
+
+})
+
+}
+
+function loop(){
+
+update()
+draw()
+
+requestAnimationFrame(loop)
+
+}
+
+loop()
+
+document.getElementById("start").onclick=startGame
+document.getElementById("shoot").onclick=shoot
+
+document.getElementById("left").ontouchstart=()=>left=true
+document.getElementById("left").ontouchend=()=>left=false
+
+document.getElementById("right").ontouchstart=()=>right=true
+document.getElementById("right").ontouchend=()=>right=false
+
+document.getElementById("left").onmousedown=()=>left=true
+document.getElementById("left").onmouseup=()=>left=false
+
+document.getElementById("right").onmousedown=()=>right=true
+document.getElementById("right").onmouseup=()=>right=false
+
+</script>
+
+</body>
+</html>
