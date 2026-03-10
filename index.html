@@ -3,14 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <title>Galaga Remaster</title>
+
 <style>
+
 body{
 margin:0;
 background:black;
-overflow:hidden;
 color:white;
-font-family:Arial;
+font-family:Courier New;
 text-align:center;
+overflow:hidden;
 }
 
 canvas{
@@ -19,7 +21,14 @@ display:block;
 margin:auto;
 }
 
-#mensajeFinal{
+#start{
+position:absolute;
+top:40%;
+width:100%;
+font-size:28px;
+}
+
+#gameover{
 display:none;
 position:absolute;
 top:40%;
@@ -27,112 +36,259 @@ width:100%;
 font-size:28px;
 }
 
-#cofre{
-font-size:60px;
+#final{
 display:none;
+position:absolute;
+top:20%;
+width:100%;
+font-size:22px;
 }
+
+#chest{
+font-size:90px;
+animation:open 1s infinite alternate;
+}
+
+@keyframes open{
+from{transform:scale(1)}
+to{transform:scale(1.2)}
+}
+
 </style>
 </head>
 
 <body>
 
+<div id="start">
+GALAGA REMASTER<br><br>
+TOCA LA PANTALLA PARA EMPEZAR
+</div>
+
 <canvas id="game" width="400" height="600"></canvas>
 
-<div id="mensajeFinal">
-<div id="cofre">💎</div>
-<br>
-RECOMPENSA PARA ANALI
-<br><br>
-Anali, durante todo este juego pensé en algo.
-Me di cuenta que me gusta pasar tiempo contigo,
-hablar contigo y conocerte más.
-
-Así que quería decirte algo sencillo pero sincero:
-
-¿Te gustaría que nos sigamos conociendo más?
-
-Att: Gael
+<div id="gameover">
+GAME OVER<br>
+TOCA PARA REINTENTAR
 </div>
+
+<div id="final">
+
+<div id="chest">💎</div>
+
+<h2>RECOMPENSA PARA ANALÍ</h2>
+
+<p>
+
+Analí…<br><br>
+
+Si llegaste hasta aquí significa que completaste
+todo el juego.<br><br>
+
+Y la verdad… este final no era solo del juego.<br><br>
+
+Mientras hacía esto pensé mucho en algo.<br>
+Me gusta hablar contigo,
+me gusta tu forma de ser
+y me gusta pasar tiempo contigo.<br><br>
+
+Por eso quería decirte algo sencillo:<br><br>
+
+Me gustaría seguir conociéndote más.<br><br>
+
+<b>Att: Gael</b>
+
+</p>
+
+</div>
+
+<canvas id="game"></canvas>
 
 <script>
 
-let canvas = document.getElementById("game");
-let ctx = canvas.getContext("2d");
+let canvas=document.querySelector("canvas");
+let ctx=canvas.getContext("2d");
 
-let player = {
-x:180,
-y:540,
-w:40,
-h:20
-};
+let player={x:180,y:520,w:40,h:20};
 
 let bullets=[];
 let enemies=[];
-let score=0;
+let explosions=[];
+let stars=[];
+
+let level=parseInt(localStorage.getItem("galaga_level"))||1;
+
+let playing=false;
 let gameOver=false;
 
-for(let i=0;i<30;i++){
-enemies.push({
-x:Math.random()*360,
-y:Math.random()*200,
-w:30,
-h:20,
-speed:1+Math.random()*2
-});
+function sound(freq){
+
+let audio=new (window.AudioContext||window.webkitAudioContext)();
+let osc=audio.createOscillator();
+
+osc.frequency.value=freq;
+osc.connect(audio.destination);
+
+osc.start();
+osc.stop(audio.currentTime+0.1);
+
 }
 
-document.addEventListener("keydown",function(e){
+for(let i=0;i<120;i++){
 
-if(e.key=="ArrowLeft") player.x-=20;
-if(e.key=="ArrowRight") player.x+=20;
+stars.push({
+x:Math.random()*400,
+y:Math.random()*600,
+speed:1+Math.random()*2
+})
 
-if(e.key==" "){
+}
+
+function spawnEnemies(){
+
+enemies=[];
+
+let rows=3+level;
+let cols=6;
+
+for(let r=0;r<rows;r++){
+
+for(let c=0;c<cols;c++){
+
+enemies.push({
+
+x:50+c*50,
+y:50+r*40,
+w:30,
+h:20,
+dir:1,
+speed:0.5+level*0.1
+
+})
+
+}
+
+}
+
+}
+
+spawnEnemies();
+
+document.body.addEventListener("click",()=>{
+
+if(!playing){
+
+playing=true;
+
+document.getElementById("start").style.display="none";
+
+}
+
+if(gameOver){
+
+location.reload();
+
+}
+
 bullets.push({
 x:player.x+18,
 y:player.y
 });
-}
+
+sound(700);
+
+});
+
+document.addEventListener("mousemove",e=>{
+
+player.x=e.clientX-200;
+
+});
+
+document.addEventListener("touchmove",e=>{
+
+player.x=e.touches[0].clientX-200;
 
 });
 
 function update(){
 
-if(gameOver)return;
+if(!playing)return;
+
+for(let s of stars){
+
+s.y+=s.speed;
+
+if(s.y>600)s.y=0;
+
+}
 
 for(let b of bullets){
-b.y-=6;
+
+b.y-=8;
+
 }
 
 for(let e of enemies){
-e.y+=e.speed;
 
-if(e.y>600){
-e.y=0;
-e.x=Math.random()*360;
-}
+e.x+=e.dir*e.speed;
+
+if(e.x<10||e.x>360)e.dir*=-1;
+
 }
 
 for(let b of bullets){
+
 for(let e of enemies){
 
 if(
+
 b.x<e.x+e.w &&
 b.x+5>e.x &&
 b.y<e.y+e.h &&
 b.y+10>e.y
+
 ){
-score++;
-e.y=-20;
-e.x=Math.random()*360;
+
+sound(200);
+
+explosions.push({
+x:e.x,
+y:e.y,
+life:20
+});
+
+e.y=-100;
+
 }
 
 }
+
 }
 
-if(score>50){
-gameOver=true;
-document.getElementById("mensajeFinal").style.display="block";
-document.getElementById("cofre").style.display="block";
+for(let ex of explosions){
+
+ex.life--;
+
+}
+
+explosions=explosions.filter(e=>e.life>0);
+
+if(enemies.every(e=>e.y<0)){
+
+level++;
+
+localStorage.setItem("galaga_level",level);
+
+spawnEnemies();
+
+}
+
+if(level>20){
+
+playing=false;
+
+document.getElementById("final").style.display="block";
+
 }
 
 }
@@ -142,30 +298,58 @@ function draw(){
 ctx.clearRect(0,0,400,600);
 
 ctx.fillStyle="white";
-ctx.fillRect(player.x,player.y,player.w,player.h);
 
-ctx.fillStyle="red";
-for(let b of bullets){
-ctx.fillRect(b.x,b.y,5,10);
+for(let s of stars){
+
+ctx.fillRect(s.x,s.y,2,2);
+
 }
 
-ctx.fillStyle="lime";
+ctx.fillStyle="cyan";
+
+ctx.fillRect(player.x,player.y,player.w,player.h);
+
+ctx.fillStyle="yellow";
+
+for(let b of bullets){
+
+ctx.fillRect(b.x,b.y,4,10);
+
+}
+
+ctx.fillStyle="red";
+
 for(let e of enemies){
+
 ctx.fillRect(e.x,e.y,e.w,e.h);
+
+}
+
+ctx.fillStyle="orange";
+
+for(let ex of explosions){
+
+ctx.fillRect(ex.x,ex.y,20,20);
+
 }
 
 ctx.fillStyle="white";
-ctx.fillText("Score: "+score,10,20);
+
+ctx.fillText("LEVEL "+level,10,20);
 
 }
 
-function gameLoop(){
+function loop(){
+
 update();
+
 draw();
-requestAnimationFrame(gameLoop);
+
+requestAnimationFrame(loop);
+
 }
 
-gameLoop();
+loop();
 
 </script>
 
