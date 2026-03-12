@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Galaga Remaster</title>
+<title>Kombat Presidencial</title>
 
 <style>
 
@@ -14,52 +14,75 @@ font-family:Arial;
 overflow:hidden;
 }
 
-canvas{
-display:block;
-}
-
 #menu{
 position:absolute;
 width:100%;
 height:100%;
 display:flex;
+flex-direction:column;
 justify-content:center;
 align-items:center;
-flex-direction:column;
 background:black;
 }
 
-#start{
-font-size:35px;
-padding:10px 40px;
-border:2px solid white;
-margin-top:20px;
+#menu h1{
+font-size:60px;
+color:red;
+text-shadow:0 0 20px red;
+}
+
+#menu button{
+padding:15px 40px;
+font-size:25px;
+background:#aa0000;
+border:none;
+color:white;
+cursor:pointer;
+}
+
+canvas{
+display:none;
+background:linear-gradient(#111,#000);
 }
 
 #hud{
 position:absolute;
 top:10px;
-left:10px;
-font-size:18px;
+width:100%;
+display:none;
+justify-content:space-between;
+padding:0 50px;
+}
+
+.bar{
+width:300px;
+height:25px;
+background:#400;
+border:2px solid #fff;
+}
+
+.life{
+height:100%;
+background:red;
 }
 
 #controls{
-position:fixed;
+position:absolute;
 bottom:20px;
 width:100%;
-display:flex;
+display:none;
 justify-content:center;
 gap:20px;
 }
 
-.ctrl{
-font-size:30px;
-width:80px;
+.btn{
+width:70px;
 height:70px;
-background:#222;
-color:white;
+border-radius:50%;
 border:none;
-border-radius:10px;
+font-size:25px;
+background:#333;
+color:white;
 }
 
 </style>
@@ -68,30 +91,21 @@ border-radius:10px;
 <body>
 
 <div id="menu">
-
-<h1>GALAGA REMASTER</h1>
-
-<div id="start">START</div>
-
-<p>Presiona 🔥 para empezar</p>
-
+<h1>KOMBAT PRESIDENCIAL</h1>
+<button onclick="startGame()">START</button>
 </div>
 
 <div id="hud">
-
-<span id="level">LEVEL 1</span> |
-<span id="lives">❤️ 3</span>
-
+<div class="bar"><div id="life1" class="life"></div></div>
+<div class="bar"><div id="life2" class="life"></div></div>
 </div>
 
-<canvas id="game"></canvas>
+<canvas id="game" width="900" height="500"></canvas>
 
 <div id="controls">
-
-<button class="ctrl" id="left">◀</button>
-<button class="ctrl" id="shoot">🔥</button>
-<button class="ctrl" id="right">▶</button>
-
+<button class="btn" id="left">⬅</button>
+<button class="btn" id="right">➡</button>
+<button class="btn" id="punch">👊</button>
 </div>
 
 <script>
@@ -99,315 +113,56 @@ border-radius:10px;
 const canvas=document.getElementById("game")
 const ctx=canvas.getContext("2d")
 
-function resize(){
-canvas.width=window.innerWidth
-canvas.height=window.innerHeight
-}
-resize()
-window.onresize=resize
+let player={x:150,y:350,w:70,h:120,life:100}
+let enemy={x:650,y:350,w:70,h:120,life:100}
 
-let started=false
+let moveL=false
+let moveR=false
 
-let level=1
-let stage=1
-let lives=3
+// sonido usando WebAudio
+let audioCtx
+function playHit(){
+if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)()
+let osc=audioCtx.createOscillator()
+let gain=audioCtx.createGain()
 
-// AUTOGUARDADO
+osc.type="square"
+osc.frequency.value=200
+gain.gain.value=0.1
 
-if(localStorage.getItem("level")){
-level=parseInt(localStorage.getItem("level"))
-lives=parseInt(localStorage.getItem("lives"))
-}
+osc.connect(gain)
+gain.connect(audioCtx.destination)
 
-document.getElementById("level").innerText="LEVEL "+level
-document.getElementById("lives").innerText="❤️ "+lives
-
-function save(){
-
-localStorage.setItem("level",level)
-localStorage.setItem("lives",lives)
-
+osc.start()
+osc.stop(audioCtx.currentTime+0.1)
 }
 
-let player={
-x:canvas.width/2,
-y:canvas.height-100
+// música simple
+function playMusic(){
+if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)()
+let osc=audioCtx.createOscillator()
+let gain=audioCtx.createGain()
+
+osc.type="sawtooth"
+osc.frequency.value=120
+gain.gain.value=0.02
+
+osc.connect(gain)
+gain.connect(audioCtx.destination)
+
+osc.start()
 }
 
-let bullets=[]
-let enemies=[]
-let explosions=[]
-let stars=[]
-
-let left=false
-let right=false
-
-// estrellas fondo
-
-for(let i=0;i<150;i++){
-
-stars.push({
-
-x:Math.random()*canvas.width,
-y:Math.random()*canvas.height,
-s:Math.random()*2
-
-})
-
-}
-
-function spawnEnemies(){
-
-enemies=[]
-
-for(let r=0;r<2+stage;r++){
-
-for(let c=0;c<6;c++){
-
-enemies.push({
-
-x:100+c*80,
-y:80+r*60,
-alive:true,
-attack:false,
-timer:Math.random()*200
-
-})
-
-}
-
-}
-
-}
-
+// iniciar juego
 function startGame(){
 
 document.getElementById("menu").style.display="none"
-
-spawnEnemies()
-
-started=true
-
-}
-
-function shoot(){
-
-if(!started){
-startGame()
-return
-}
-
-bullets.push({
-
-x:player.x,
-y:player.y
-
-})
-
-}
-
-function explode(x,y){
-
-explosions.push({
-
-x:x,
-y:y,
-size:30
-
-})
-
-}
-
-function update(){
-
-if(!started)return
-
-if(left)player.x-=7
-if(right)player.x+=7
-
-player.x=Math.max(30,Math.min(canvas.width-30,player.x))
-
-stars.forEach(s=>{
-
-s.y+=s.s
-if(s.y>canvas.height)s.y=0
-
-})
-
-bullets.forEach(b=>b.y-=10)
-
-enemies.forEach(e=>{
-
-if(!e.alive)return
-
-e.timer--
-
-if(e.timer<0){
-
-e.attack=true
-
-}
-
-if(e.attack){
-
-e.y+=3
-
-if(e.y>canvas.height){
-
-e.y=80
-e.attack=false
-e.timer=200
-
-}
-
-}
-
-})
-
-bullets.forEach((b,bi)=>{
-
-enemies.forEach(e=>{
-
-if(e.alive &&
-Math.abs(b.x-e.x)<20 &&
-Math.abs(b.y-e.y)<20){
-
-e.alive=false
-
-explode(e.x,e.y)
-
-bullets.splice(bi,1)
-
-}
-
-})
-
-})
-
-explosions.forEach(ex=>ex.size--)
-
-if(enemies.every(e=>!e.alive)){
-
-stage++
-
-if(stage>3){
-
-stage=1
-level++
-
-document.getElementById("level").innerText="LEVEL "+level
-
-save()
-
-}
-
-if(level>20){
-
-alert("Anali, me gustas mucho. Att: Gael")
-
-localStorage.clear()
-
-}
-
-spawnEnemies()
-
-}
-
-}
-
-function draw(){
-
-ctx.fillStyle="black"
-ctx.fillRect(0,0,canvas.width,canvas.height)
-
-ctx.fillStyle="white"
-
-stars.forEach(s=>{
-
-ctx.fillRect(s.x,s.y,2,2)
-
-})
-
-
-// NAVE
-
-ctx.fillStyle="cyan"
-
-ctx.beginPath()
-
-ctx.moveTo(player.x,player.y)
-ctx.lineTo(player.x-20,player.y+30)
-ctx.lineTo(player.x+20,player.y+30)
-
-ctx.fill()
-
-// DISPAROS
-
-ctx.fillStyle="yellow"
-
-bullets.forEach(b=>{
-
-ctx.fillRect(b.x-2,b.y,4,10)
-
-})
-
-// ENEMIGOS
-
-ctx.fillStyle="lime"
-
-enemies.forEach(e=>{
-
-if(!e.alive)return
-
-ctx.beginPath()
-
-ctx.arc(e.x,e.y,15,0,Math.PI*2)
-
-ctx.fill()
-
-})
-
-// EXPLOSIONES
-
-ctx.fillStyle="orange"
-
-explosions.forEach(ex=>{
-
-ctx.beginPath()
-ctx.arc(ex.x,ex.y,ex.size,0,Math.PI*2)
-ctx.fill()
-
-})
-
-}
-
-function loop(){
-
-update()
-draw()
-
-requestAnimationFrame(loop)
-
-}
+canvas.style.display="block"
+document.getElementById("hud").style.display="flex"
+document.getElementById("controls").style.display="flex"
+
+playMusic()
 
 loop()
 
-document.getElementById("start").onclick=startGame
-document.getElementById("shoot").onclick=shoot
-
-document.getElementById("left").ontouchstart=()=>left=true
-document.getElementById("left").ontouchend=()=>left=false
-
-document.getElementById("right").ontouchstart=()=>right=true
-document.getElementById("right").ontouchend=()=>right=false
-
-document.getElementById("left").onmousedown=()=>left=true
-document.getElementById("left").onmouseup=()=>left=false
-
-document.getElementById("right").onmousedown=()=>right=true
-document.getElementById("right").onmouseup=()=>right=false
-
-</script>
-
-</body>
-</html>
+}
